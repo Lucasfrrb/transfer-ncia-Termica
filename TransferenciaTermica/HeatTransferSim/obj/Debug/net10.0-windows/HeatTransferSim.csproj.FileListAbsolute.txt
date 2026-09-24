@@ -1,0 +1,14 @@
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\bin\Debug\net10.0-windows\HeatTransferSim.exe
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\bin\Debug\net10.0-windows\HeatTransferSim.deps.json
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\bin\Debug\net10.0-windows\HeatTransferSim.runtimeconfig.json
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\bin\Debug\net10.0-windows\HeatTransferSim.dll
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\bin\Debug\net10.0-windows\HeatTransferSim.pdb
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\HeatTransferSim.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\HeatTransferSim.AssemblyInfoInputs.cache
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\HeatTransferSim.AssemblyInfo.cs
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\HeatTransferSim.csproj.CoreCompileInputs.cache
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\HeatTransferSim.dll
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\refint\HeatTransferSim.dll
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\HeatTransferSim.pdb
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\HeatTransferSim.genruntimeconfig.cache
+C:\Users\lf380\Documents\TransferenciaTermica-main\HeatTransferSim\obj\Debug\net10.0-windows\ref\HeatTransferSim.dll

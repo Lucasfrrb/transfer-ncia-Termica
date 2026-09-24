@@ -1,0 +1,110 @@
+SIMULADOR DE TRANSFERENCIA DE CALOR
+Anotacoes: formulas usadas e como cada material se comporta
+=============================================================
+
+1) MODELO FISICO
+-----------------
+
+O simulador considera cada bloco como um cubo homogeneo (temperatura
+uniforme dentro dele) que troca calor por CONDUCAO com seus vizinhos.
+Nao existe conveccao, radiacao, nem temperatura ambiente: e um sistema
+fechado, so existe troca de calor bloco-a-bloco.
+
+a) Lei de Fourier (condução entre dois blocos vizinhos)
+
+      q = k * A * DeltaT
+
+      q      = taxa de calor trocada (W)
+      k      = condutividade termica do material (W/m.K)
+      A      = area de contato entre os blocos = lado^2 (m^2)
+      DeltaT = diferenca de temperatura entre os dois blocos (K ou C)
+
+   (a distancia entre os centros dos blocos, "dx", nao entra na conta:
+   o k do material ja funciona como a "resistencia" por unidade de
+   area de contato, simplificacao adotada no projeto)
+
+   Vizinhanca: cada bloco pode trocar calor com ate 8 vizinhos.
+     - cima, baixo, esquerda, direita  -> peso 1.00 (contato "cheio")
+     - as 4 diagonais                  -> peso 0.25 (contato menor,
+       so tocam "de canto")
+
+   Se dois blocos tivessem materiais diferentes, o k usado seria o
+   MENOR dos dois (o material menos condutor manda na troca). Hoje o
+   material e unico pra grade inteira, entao k efetivo = k do material
+   escolhido, sempre.
+
+b) Calor sensivel (como a temperatura de um bloco muda)
+
+      Q = m * c * DeltaT   =>   DeltaT = Q / (m * c)
+
+      Q = energia trocada no intervalo de tempo (J)
+      m = massa do bloco = Volume * densidade = lado^3 * rho (kg)
+      c = calor especifico do material (J/kg.K)
+
+   O produto (m * c) e a "capacitancia termica" do bloco: quanto maior,
+   mais energia e preciso pra mudar 1 grau a temperatura dele.
+
+c) Passo de tempo (dt) e estabilidade numerica
+
+   A simulacao usa integracao explicita (Euler): a cada passo, calcula
+   o calor trocado usando as temperaturas atuais e atualiza todo mundo
+   de uma vez. Pra isso nao "explodir" numericamente, o dt tem que ser
+   pequeno o bastante. O programa calcula isso sozinho:
+
+      dt_seguro = min( 0.25 / lambda_max , 5.0 s )
+
+      lambda = soma, por bloco, de (k*A*peso)/(m*c) de cada vizinho
+
+   O fator 0.25 e uma margem de seguranca (o limite teorico e por volta
+   de 1/lambda_max); o teto de 5.0 s existe so pra nao deixar a
+   animacao "pular" demais quando o passo calculado seria enorme.
+   Perceba que, pra blocos de 5 cm com metais comuns, esse teto de 5s
+   quase sempre e atingido pelos DOIS lados (dt aparece igual pra
+   materiais diferentes) - isso NAO quer dizer que a fisica e igual,
+   e so o passo de integracao batendo no mesmo teto. Ver secao 3.
+
+d) Conservacao de energia (por que a simulacao sempre estabiliza)
+
+   Como so existe troca de calor ENTRE os blocos (nada entra nem sai
+   do sistema), a soma de (m*c*T) de todos os blocos e constante. Por
+   isso a grade sempre caminha pra um equilibrio (todo mundo na mesma
+   temperatura) e NUNCA fica esquentando pra sempre - a nao ser que
+   voce aplique uma nova temperatura inicial a um bloco manualmente.
+
+
+2) TABELA DE MATERIAIS
+------------------------
+
+k = condutividade termica (W/m.K) - quanto calor atravessa por segundo
+c = calor especifico (J/kg.K) - quanta energia pra mudar 1 grau, por kg
+rho = densidade (kg/m^3)
+alfa = k / (rho * c) = DIFUSIVIDADE TERMICA (m^2/s)
+
+alfa e o numero mais importante pra entender a VELOCIDADE com que o
+calor se espalha: quanto maior o alfa, mais rapido (em segundos
+simulados) um bloco quente esquenta os vizinhos. Repare que alfa NAO
+depende só da condutividade k - também depende de quanta energia o
+material "segura" por volume (rho*c). Por isso prata (boa condutora,
+mas leve) se espalha mais rapido que ouro (condutividade parecida, mas
+muito mais denso).
+
+Material           k (W/m.K)   c (J/kg.K)   rho (kg/m3)   alfa (m2/s)
+--------------------------------------------------------------------
+Prata                  429         235         10490      1.74e-4
+Cobre                  401         385          8960      1.16e-4
+Ouro                   317         129         19320      1.27e-4
+Aluminio               237         903          2700      9.72e-5
+Latao                  120         380          8500      3.72e-5
+Aco                     50         450          7850      1.42e-5
+Chumbo                  35         130         11340      2.37e-5
+Gelo                  2.18        2108           917      1.13e-6
+Vidro                 0.95         840          2500      4.52e-7
+Ceramica               0.8         880          1800      5.05e-7
+Madeira (Noz)         0.12        1700           700      1.01e-7
+Plastico (HDPE)        0.2        1400           950      1.50e-7
+Borracha              0.16        1500          1100      9.70e-8
+
+(valores tipicos de tabela de engenharia; o proposito aqui e didatico,
+nao um material real e exato de catalogo)
+
+
