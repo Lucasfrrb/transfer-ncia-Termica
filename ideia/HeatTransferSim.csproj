@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Driver MySQL com async de verdade; funciona com MySQL e também com o MariaDB do XAMPP.
+         "2.*" = a versão 2.x estável mais recente (o NuGet resolve sozinho ao restaurar pacotes;
+         precisa de internet na primeira compilação). Se preferir, instale pelo NuGet Package
+         Manager do Visual Studio: pesquise "MySqlConnector" e clique em Instalar. -->
+    <PackageReference Include="MySqlConnector" Version="2.*" />
+  </ItemGroup>
+
+</Project>
