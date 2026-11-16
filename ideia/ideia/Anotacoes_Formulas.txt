@@ -1,0 +1,308 @@
+﻿SIMULADOR DE TRANSFERÊNCIA DE CALOR
+Anotações: fórmulas usadas e como cada material se comporta
+=============================================================
+
+1) MODELO FÍSICO
+-----------------
+
+O simulador considera cada bloco como um cubo homogêneo (temperatura
+uniforme dentro dele) que troca calor por CONDUÇÃO com seus vizinhos.
+Não existe convecção, radiação nem temperatura ambiente: é um sistema
+fechado, só existe troca de calor bloco a bloco.
+
+a) Vizinhança
+
+   Cada bloco troca calor com até 8 vizinhos:
+     - cima, baixo, esquerda, direita -> contato "cheio"  (peso 1.00,
+       distância entre centros d = L)
+     - as 4 diagonais                 -> contato menor    (peso 0.25,
+       distância entre centros d = L * raiz(2))
+   L = lado do cubo (m).  A = L^2 = área de contato (m^2).
+
+b) Condução entre dois blocos (materiais iguais OU diferentes)
+
+   Lei de Fourier:   q = k * A * DeltaT / d
+
+   Quando os dois blocos têm materiais diferentes (k1 e k2), o calor
+   atravessa "meio bloco" do material 1 e "meio bloco" do material 2:
+   são duas resistências térmicas em SÉRIE.
+
+      R  = (d/2)/(k1*A) + (d/2)/(k2*A)
+      G  = 1/R = A * kh / d            (G = condutância, em W/K)
+      kh = 2*k1*k2 / (k1 + k2)         (média HARMÔNICA)
+
+   Para a diagonal, G também é multiplicado pelo peso 0.25.
+   Calor trocado (W) entre o bloco i e o vizinho j:  q = G * (Tj - Ti)
+
+   Por que média harmônica e não média simples ou o menor k?
+     - Com materiais iguais, kh = k (volta à fórmula clássica).
+     - O pior condutor MANDA na troca: cobre (401) com madeira (0.12)
+       dá kh = 0.24, quase o k da madeira. Por isso uma fila de isolante
+       "segura" o calor, como na vida real.
+     - Entre dois metais diferentes o valor fica no meio, de forma
+       coerente (cobre 401 + alumínio 237 -> kh = 297.9; o "menor k"
+       simples daria 237).
+
+   Exemplo numérico (lado 5 cm, A = 0.0025 m^2, vizinhos laterais):
+     Cobre   - Cobre     kh = 401.00   G = 20.050 W/K
+     Cobre   - Alumínio  kh = 297.92   G = 14.896 W/K
+     Cobre   - Madeira   kh =   0.240  G =  0.0120 W/K   (1670x menor)
+     Cobre   - Borracha  kh =   0.320  G =  0.0160 W/K
+     Madeira - Madeira   kh =   0.120  G =  0.0060 W/K
+
+c) Calor sensível (como a temperatura de um bloco muda)
+
+      Q = m * c * DeltaT   =>   DeltaT = Q / (m * c)
+
+      m = massa do bloco = lado^3 * rho (kg)
+      c = calor específico do material (J/kg.K)
+      C = m * c  = capacitância térmica do bloco (J/K): quanta energia
+          é preciso para mudar 1 grau a temperatura dele.
+
+   Cada bloco usa o c e o rho do SEU material. Com materiais diferentes,
+   os blocos têm capacitâncias diferentes (lado 5 cm: cobre 431 J/K,
+   alumínio 305 J/K, madeira 149 J/K, borracha 206 J/K).
+
+d) Equação de cada bloco e passo de tempo (dt)
+
+   A cada passo, para cada bloco i:
+
+      DeltaT_i = dt * ( soma sobre os vizinhos j de  G_ij * (Tj - Ti) ) / C_i
+
+   Todas as variações são calculadas com as temperaturas ATUAIS e só
+   depois aplicadas (método de Euler explícito); por isso a ordem em
+   que os blocos são percorridos não importa.
+
+   O dt é calculado sozinho:
+
+      dt = min( 0.1 / lambda_max , 60 s )
+      lambda_i = (soma dos G_ij do bloco i) / C_i    (1/s)
+      lambda_max = o maior lambda_i da grade
+
+   - 1/lambda_max é o limite de estabilidade do Euler; o fator 0.1 dá
+     folga E precisão (erro < 2 C na fase mais rápida de uma grade de
+     cobre 5x5 com degrau de 275 C, e some em poucos segundos simulados;
+     o resultado final de equilíbrio é exato).
+   - O teto de 60 s só existe para a animação não "pular" com isolantes
+     (onde o dt estável seria enorme).
+   - Misturar metal com isolante deixa o dt pequeno (o metal manda), mas
+     o isolante continua evoluindo devagar: use a velocidade alta.
+   - dt é recalculado sempre que material ou lado mudam.
+
+e) Conservação de energia e temperatura de equilíbrio
+
+   Como só existe troca ENTRE os blocos (G_ij = G_ji) e nada entra nem
+   sai do sistema, a soma de C_i * T_i é constante. Por isso a grade
+   sempre caminha para o equilíbrio e NUNCA esquenta para sempre.
+
+   Temperatura final de equilíbrio (média PONDERADA pela capacitância):
+
+      T_eq = soma(C_i * T_i) / soma(C_i)
+
+   Com materiais iguais é a média simples. Com materiais diferentes NÃO:
+   exemplo, cobre a 100 C + madeira a 20 C (mesmo tamanho):
+      T_eq = (431.2*100 + 148.8*20) / (431.2 + 148.8) = 79.48 C
+   (a média simples daria 60 C). O painel "Informações" mostra o T_eq
+   previsto com essa fórmula; a simulação chega exatamente nele.
+
+   Considera-se "equilíbrio térmico" quando o bloco mais quente e o mais
+   frio diferem menos de 0.001 C (HeatGrid.EquilibriumTolerance). Aí a
+   simulação pausa sozinha.
+
+f) Modelo simplificado antigo (opcional)
+
+   A versão anterior ignorava a distância (q = k*A*DeltaT) e usava o MENOR
+   k entre os dois blocos. Se o professor preferir, em Models/HeatGrid.cs
+   a linha "IncludeDistance = true" pode virar false (remove o "/d"). A
+   troca de calor fica ~1/lado vezes mais lenta (20x para 5 cm) e deixa
+   de ser fisicamente consistente (as unidades de tempo ficam erradas).
+
+
+2) TABELA DE MATERIAIS
+------------------------
+
+k = condutividade térmica (W/m.K) - quanto calor atravessa por segundo
+c = calor específico (J/kg.K) - quanta energia pra mudar 1 grau, por kg
+rho = densidade (kg/m^3)
+alfa = k / (rho * c) = DIFUSIVIDADE TÉRMICA (m^2/s)
+
+alfa é o número mais importante pra entender a VELOCIDADE com que o
+calor se espalha: quanto maior o alfa, mais rápido (em segundos
+simulados) um bloco quente esquenta os vizinhos. Repare que alfa NÃO
+depende só de k - também depende de quanta energia o material "segura"
+por volume (rho*c). Por isso prata (boa condutora, mas leve) se espalha
+mais rápido que ouro (condutividade parecida, mas muito mais denso).
+
+Material           k (W/m.K)   c (J/kg.K)   rho (kg/m3)   alfa (m2/s)
+--------------------------------------------------------------------
+Prata                  429         235         10490      1.74e-4
+Cobre                  401         385          8960      1.16e-4
+Ouro                   317         129         19320      1.27e-4
+Alumínio               237         903          2700      9.72e-5
+Latão                  120         380          8500      3.72e-5
+Aço                     50         450          7850      1.42e-5
+Chumbo                  35         130         11340      2.37e-5
+Gelo                  2.18        2108           917      1.13e-6
+Vidro                 0.95         840          2500      4.52e-7
+Cerâmica               0.8         880          1800      5.05e-7
+Madeira (Noz)         0.12        1700           700      1.01e-7
+Plástico (HDPE)        0.2        1400           950      1.50e-7
+Borracha              0.16        1500          1100      9.70e-8
+
+(valores típicos de tabela de engenharia; o propósito aqui é didático,
+não um material real e exato de catálogo)
+
+
+3) MATERIAL GERAL x MATERIAL POR BLOCO
+----------------------------------------
+
+- "Material geral" (combo no painel "Grade e material geral"): é o
+  material de todos os blocos que NÃO têm material próprio. Se você não
+  mexer em nenhum bloco, mudar o material geral muda a grade inteira.
+- Material PRÓPRIO: selecione um ou vários blocos na grade, escolha o
+  material no combo "Material:" do painel "Blocos selecionados" e clique
+  em "Aplicar". O bloco aparece com uma faixa colorida embaixo (com o
+  nome do material). O botão "Padrão" tira o material próprio dos blocos
+  selecionados (voltam a seguir o material geral).
+- Mudar o material geral NÃO desfaz os blocos que você configurou
+  individualmente (assim dá pra testar "e se a base fosse alumínio?"
+  mantendo a sua fila de isolante). Para apagar tudo e usar um material
+  só na grade inteira, use o botão "Todos os blocos = este material".
+- Cada par de vizinhos usa a fórmula da seção 1b com os materiais dos
+  DOIS blocos, e cada bloco usa o c e o rho do próprio material.
+
+Exemplo: FILA DE MATERIAL ISOLANTE
+   1. Crie uma grade (ex.: 5 linhas x 9 colunas) com material geral Cobre.
+   2. Clique no número "4" no topo da grade: a coluna 4 inteira é
+      selecionada (para uma linha, clique no número da linha).
+   3. No painel "Blocos selecionados", escolha Madeira (Noz) e "Aplicar".
+   4. Selecione os blocos da coluna 0, ponha 300 C e "Aplicar".
+   5. Clique em Iniciar. O calor corre pelo cobre até a madeira e quase
+      não passa para o outro lado.
+
+   Resultado conferido (grade 5x9 de cobre, lado 5 cm, coluna 0 a 300 C,
+   resto 25 C, depois de 600 s simulados; média das colunas 5 a 8):
+      sem isolante ...................... 55.0 C
+      coluna 4 toda de madeira .......... 25.0 C  (o calor não passa)
+      madeira com um "buraco" em (2,4) .. 49.0 C  (vaza pelo buraco)
+   E uma linha inteira de borracha numa grade 5x5, linha 0 a 300 C,
+   depois de 300 s: as linhas abaixo da borracha ficam em 25.0 C (sem a
+   borracha ficariam em ~80 C). As diagonais não "furam" a fila, porque
+   um vizinho só alcança 1 linha/coluna de distância.
+
+
+4) COMO ISSO APARECE NA SIMULAÇÃO
+------------------------------------
+
+Tempo simulado até o equilíbrio (grade 5x5, lado 5 cm, só o bloco (0,0)
+a 300 C e o resto a 25 C; equilíbrio = 36 C):
+
+   Prata ............ ~5.5 min      Gelo ............. ~14 horas
+   Cobre ............ ~8.3 min      Vidro ............ ~35 horas
+   Alumínio ......... ~9.9 min      Madeira (Noz) .... ~6.6 dias
+   Aço .............. ~68 min       Borracha ......... ~6.9 dias
+
+(depende do tamanho da grade e do lado do cubo; a escala do tempo é
+aproximadamente lado^2 / alfa)
+
+- Metais têm alfa entre 1e-5 e 1e-4 m2/s: minutos simulados.
+- Isolantes têm alfa 100 a 1000 vezes MENOR: horas ou dias simulados.
+- O "dt" mostrado na tela pode aparecer igual (60 s) para vários
+  isolantes só por causa do teto (seção 1d). Quem muda com o material é
+  a taxa de troca de calor dentro de cada passo.
+- Para o equilíbrio final, só importa a energia total e as capacitâncias
+  (seção 1e); o material muda a VELOCIDADE de chegar lá, não o valor
+  final - a não ser que os blocos tenham materiais diferentes, aí a
+  média é ponderada pela capacitância de cada bloco.
+- O slider de velocidade é logarítmico (1 a 1000 passos por quadro) e
+  mostra quanto tempo simulado passa por segundo real. Metais ficam
+  bonitos em 1-10 passos/quadro; isolantes pedem 100-1000.
+
+
+5) SOBRE A GRADE EM SI
+-------------------------
+
+- O tamanho é escolhido por você: LINHAS x COLUNAS, de 1 a 40 cada
+  (3x1, 5x9, 20x20...). Clique em "Criar grade" para aplicar (o botão
+  mostra o tamanho que vai criar). Ao recriar, as temperaturas e os
+  materiais próprios que já estiverem dentro do novo tamanho são mantidos.
+- Selecionar blocos:
+     clique ....................... um bloco
+     clique e arraste ............. um retângulo de blocos
+     Ctrl + clique ................ liga/desliga um bloco
+     clique no número da linha/coluna (margens) ... a fila inteira
+       (com Ctrl soma à seleção)
+     clique em "tudo" (canto) ou Ctrl+A ... todos
+     Esc ou clique fora ........... limpa a seleção
+- Temperatura inicial de qualquer bloco: selecione, digite o valor,
+  "Aplicar" (ou "Remover" para voltar a 25 C). Quantos blocos quiser.
+- Cores dos blocos: a cor de fundo é a temperatura (escala FIXA, seção 6c);
+  borda amarela = temperatura inicial personalizada; borda branca/clareado
+  = selecionado; faixa colorida embaixo = material próprio.
+- As coordenadas (linha, coluna) começam em 0.
+- Blocos sem temperatura personalizada começam a 25 C (constante
+  BaseTemperature em Models/HeatGrid.cs).
+- Mudar a configuração (temperatura, material, lado) DEPOIS que a
+  simulação já calculou passos reinicia do zero (nova simulação).
+  "Zerar temperaturas" refaz o experimento reaplicando a configuração.
+- Não há ambiente/convecção: é um sistema fechado, só bloco a bloco.
+
+
+6) ASSÍNCRONO, BANCO DE DADOS E CORES
+---------------------------------------
+
+a) Cálculo assíncrono
+   - HeatGrid.StepManyAsync(n) calcula n passos de tempo dentro de UMA
+     tarefa em segundo plano (Task.Run / thread pool). A tela não trava,
+     mesmo em grades grandes. Os passos são sequenciais (cada um depende
+     do anterior), então não há paralelismo entre eles - o ganho é manter
+     a interface livre.
+   - Enquanto a simulação roda, os controles que mudariam a grade
+     (tamanho, lado, materiais, temperaturas) ficam bloqueados, para não
+     mexer nos dados enquanto outra thread calcula. Selecionar blocos
+     para ver os valores continua liberado.
+   - Ao atingir o equilíbrio térmico a simulação pausa sozinha.
+
+b) Banco de dados (MySQL, driver MySqlConnector)
+   - Uma vez só: ter o MySQL rodando; criar o banco vazio
+     "transferencia_termica"; editar Data/DbConfig.cs (usuário/senha).
+     As tabelas são criadas sozinhas ao abrir o programa. Se o banco foi
+     criado pela versão anterior (grade quadrada), é convertido sozinho.
+   - TODA simulação vira uma linha em "simulations": criar/recriar a
+     grade ou zerar = simulação nova; mudar material/lado/temperatura
+     depois que ela já começou também recomeça do zero (nova linha). O
+     registro é feito no primeiro passo calculado, já com a configuração
+     final que você decidiu rodar.
+   - Tabelas:
+       simulations ................. uma linha por simulação: início/fim,
+           linhas x colunas, lado, material geral (nome, k, c, rho), dt,
+           passos, tempo simulado, T mín/máx, ReachedEquilibrium
+       simulation_initial_temperatures ... uma linha por bloco com
+           temperatura inicial personalizada (RowIndex, ColIndex, valor)
+       simulation_block_materials ........ uma linha por bloco com material
+           próprio (RowIndex, ColIndex, nome, k, c, rho)
+   - O registro inteiro de uma simulação nova é gravado numa transação
+     (ou grava tudo, ou nada). O progresso (passos, tempo simulado,
+     min/max) é atualizado a cada ~1 s, ao pausar, ao zerar e ao atingir
+     o equilíbrio (ReachedEquilibrium = 1 e FinishedAt).
+   - Se o banco estiver fora do ar o simulador continua funcionando; o
+     painel Informações mostra o motivo e avisa que não está registrando.
+   - Consultas prontas para conferir os dados: Data/schema.sql.
+
+c) Escala de cores fixa
+   - -200 C = azul ... 1500 C = vermelho
+     (TemperatureGridControl.ColorScaleMin/Max). A mesma temperatura é
+     sempre a mesma cor, em qualquer simulação.
+
+
+7) LIMITAÇÕES DO MODELO (para citar no relatório)
+---------------------------------------------------
+
+- Cada bloco é um ponto (temperatura uniforme): a condução DENTRO do
+  bloco não é simulada, só entre blocos. Quanto menor o lado, mais fiel.
+- Todos os blocos têm o mesmo lado (um único tamanho de cubo na grade).
+- Propriedades (k, c, rho) constantes com a temperatura (na vida real
+  variam, e gelo/água mudam de fase - isso não é simulado).
+- As diagonais usam o peso 0.25 na área (aproximação do projeto).
+- Integração de Euler explícito: simples e estável com o dt automático,
+  mas de 1ª ordem (ver precisão em 1d).

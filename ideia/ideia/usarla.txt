@@ -1,0 +1,7 @@
+SELECT * FROM simulations ORDER BY Id DESC;
+
+SELECT Id, StartedAt, CONCAT(GridRows,'x',GridCols) AS Grade,
+       MaterialName AS MaterialGeral, StepsComputed AS Passos,
+       ROUND(SimulatedTimeSeconds/60,1) AS Minutos,
+       MinTemperature, MaxTemperature, ReachedEquilibrium
+FROM simulations ORDER BY Id DESC;

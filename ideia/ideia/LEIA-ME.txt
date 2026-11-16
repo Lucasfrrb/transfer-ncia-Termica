@@ -1,0 +1,44 @@
+﻿SIMULADOR DE TRANSFERÊNCIA DE CALOR - LEIA-ME
+==============================================
+
+COMO ABRIR E RODAR
+  1. Precisa do Visual Studio 2022 (ou mais novo) com o .NET 10 SDK e a carga
+     de trabalho "Desenvolvimento para desktop com .NET".
+  2. Abra o arquivo HeatTransferSim.csproj (ou a pasta) no Visual Studio.
+  3. Na primeira compilação o NuGet baixa o pacote MySqlConnector (precisa de
+     internet). Depois é só apertar F5.
+
+BANCO DE DADOS (uma vez só)
+  1. Deixe o MySQL rodando (XAMPP, MySQL Server, Workbench...).
+  2. Crie um banco VAZIO:   CREATE DATABASE transferencia_termica;
+  3. Abra Data/DbConfig.cs e coloque seu usuário e senha. No XAMPP o usuário
+     é "root" e a senha é vazia ("").
+  As tabelas são criadas sozinhas quando o programa abre. Sem banco o
+  simulador funciona igual, só não registra (o painel Informações avisa).
+  Consultas prontas para ver os dados: Data/schema.sql.
+
+COMO USAR
+  - Escolha Linhas e Colunas (ex.: 3 x 1, 5 x 9) e clique em "Criar grade".
+  - "Material geral" vale para todos os blocos sem material próprio.
+  - Clique num bloco, arraste, ou clique no número de uma linha/coluna para
+    selecionar vários. Aí defina a temperatura e/ou o material deles
+    (painel "Blocos selecionados"). Exemplo: selecione uma coluna inteira,
+    material Madeira, Aplicar = fila de isolante.
+  - Iniciar / Pausa / Passo / Zerar. A velocidade é logarítmica; isolantes
+    levam dias simulados, então aumente a velocidade para eles.
+  - A simulação pausa sozinha no equilíbrio térmico.
+  - Cores: -200 C = azul ... 1500 C = vermelho, sempre fixo.
+
+ARQUIVOS (padrão MVC)
+  Models/       HeatGrid.cs (motor da simulação), Body.cs, Material.cs
+  Views/        TemperatureGridControl.cs (desenho da grade e seleção)
+  Controllers/  Form1*.cs (janela dividida em partes: edição da grade,
+                interface, simulação assíncrona, banco, informações)
+  Data/         DbConfig.cs, SimulationRepository.cs, schema.sql
+  Anotacoes_Formulas.txt  fórmulas, exemplos e limitações do modelo
+
+OBSERVAÇÃO
+  Este código foi escrito e conferido sem um compilador C# disponível e sem
+  um MySQL de teste. A matemática foi validada com um simulador equivalente
+  em Python. Se o Visual Studio apontar algum erro de compilação ou o banco
+  recusar a conexão, copie a mensagem e peça a correção.
